@@ -1,0 +1,57 @@
+﻿<!--
+  Format SDK : tous les .cs sous Source/GroundBlastFx/ sont inclus automatiquement.
+  Cible : les assemblies de KSP 1.12 lui-même (mscorlib du Mono de Unity 2019.4),
+  compilées avec /nostdlib contre KSP_x64_Data/Managed. Voir décision D-CL-003.
+  Chemin de KSP : propriété KSPRoot, ou variable d'environnement KSP_ROOT, (obligatoire).
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>GroundBlastFx</AssemblyName>
+    <RootNamespace>GroundBlastFx</RootNamespace>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <Deterministic>true</Deterministic>
+    <WarningLevel>4</WarningLevel>
+
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>GroundBlastFx</Product>
+    <Company>GroundBlastFx</Company>
+    <Copyright>MIT</Copyright>
+
+    <KSPRoot Condition="'$(KSPRoot)' == '' and '$(KSP_ROOT)' != ''">$(KSP_ROOT)</KSPRoot>
+    
+    <KSPManaged>$(KSPRoot)\KSP_x64_Data\Managed</KSPManaged>
+
+    <!-- On compile contre le mscorlib de KSP, pas contre un pack de référence .NET Framework. -->
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <NoStdLib>true</NoStdLib>
+    <NoCompilerStandardLib>true</NoCompilerStandardLib>
+    <AddAdditionalExplicitAssemblyReferences>false</AddAdditionalExplicitAssemblyReferences>
+    <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+    <FrameworkPathOverride>$(KSPManaged)</FrameworkPathOverride>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="$(KSPManaged)\mscorlib.dll" Private="false" />
+    <Reference Include="$(KSPManaged)\System.dll" Private="false" />
+    <Reference Include="$(KSPManaged)\System.Core.dll" Private="false" />
+    <Reference Include="$(KSPManaged)\System.Xml.dll" Private="false" />
+    <Reference Include="$(KSPManaged)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="$(KSPManaged)\Assembly-CSharp-firstpass.dll" Private="false" />
+    <Reference Include="$(KSPManaged)\UnityEngine*.dll" Private="false" />
+  </ItemGroup>
+
+  <Target Name="GroundBlastFxCheckKsp" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(KSPManaged)\Assembly-CSharp.dll')"
+           Text="[GroundBlastFx] KSP introuvable : '$(KSPManaged)\Assembly-CSharp.dll'. Passez -p:KSPRoot=... ou définissez KSP_ROOT." />
+  </Target>
+  <Target Name="CheckKspRoot" BeforeTargets="Build" Condition="'$(KSPRoot)' == ''">
+    <Error Text="Set the KSPRoot property or the KSP_ROOT environment variable to a KSP 1.12 install." />
+  </Target>
+</Project>

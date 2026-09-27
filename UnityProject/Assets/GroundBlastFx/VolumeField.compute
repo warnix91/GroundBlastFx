@@ -1,0 +1,281 @@
+#pragma kernel Simulate
+#pragma kernel Debris
+
+// Grille 3D de densité par foyer, ANCRÉE AU SOL (quatre grilles empilées en z dans une seule texture).
+// Le jet n'est qu'une source qui se déplace dans la grille : le nuage déjà formé reste où il est, puis il est
+// transporté par l'écoulement (jet pariétal depuis l'impact courant, rouleau, flottabilité, vent) et par une
+// turbulence en rotationnel de bruit qui évolue dans le temps (jamais deux fois la même forme).
+#include "GEFlow.cginc"
+
+RWTexture3D<float> _OutDensity;
+Texture3D<float> _InDensity;
+SamplerState sampler_InDensity;
+Texture3D<float4> _GENoise;
+SamplerState sampler_GENoise;
+float4 _GEDims;            // x, y, z par foyer ; nombre de grilles empilées
+// x = remise à zéro, y = grille à faire avancer cette frame. En float4 : dans un tampon de constantes, chaque élément
+// d'un tableau « float x[4] » occupe 16 octets, et SetFloats (valeurs contiguës) ne remplissait que l'élément 0 :
+// les emplacements 1 à 3 n'étaient jamais simulés (nuages invisibles dès qu'un 2ᵉ foyer existait) — corrigé en 1.4.
+float4 _GESimFlags[4];
+float4 _GEPrevExt[4];      // étendue de la grille au pas précédent (E, Hg) : elle peut s'agrandir ; zw : son déplacement (dérive, m)
+float _DeltaTime;
+float _GETime;
+
+struct DebrisParticle { float4 posLife; float4 velSeed; };
+RWStructuredBuffer<DebrisParticle> _GEDebris;
+float4 _GEDebrisData[4]; // r_i, vitesse caractéristique, angle d'éjection (rad), mode (0 rien, 1 vide, 2 eau)
+float4 _GEDebrisGravity[4]; // gravité, intensité, probabilité de relance par image, remise à zéro (1)
+int _GEDebrisPerSlot;
+float _GEDebrisDeltaTime;
+float _GEDebrisFrame;       // numéro d'image (tirages aléatoires renouvelés)
+
+float Hash1(uint v)
+{
+    v ^= v >> 16; v *= 0x7feb352d; v ^= v >> 15;
+    v *= 0x846ca68b; v ^= v >> 16;
+    return (v & 0x00ffffff) / 16777215.0;
+}
+
+[numthreads(64,1,1)]
+void Debris(uint3 dispatchId : SV_DispatchThreadID)
+{
+    uint id = dispatchId.x;
+    uint slot = id / (uint)_GEDebrisPerSlot;
+    if (slot >= 4) return;
+    uint frame = (uint)_GEDebrisFrame;
+    float h = Hash1(id * 137u + 31u);
+    DebrisParticle p = _GEDebris[id];
+    float mode = _GEDebrisData[slot].w;          // 0 = rien, 1 = grains du vide, 2 = gouttes d'eau
+    bool water = mode > 1.5 && mode < 2.5;
+    bool gravel = mode > 2.5;                     // 3 = gravillons et mottes (sol meuble, en atmosphère)
+    if (_GEDebrisGravity[slot].w > 0.5)
+    {
+        p.posLife = float4(0, 0, 0, -h * 2.0);
+        p.velSeed = float4(0, 0, 0, h);
+    }
+    else if (p.posLife.w > 0)
+    {
+        // Particules dans le repère FIXE du sol (origine = ancrage du nuage) : une fois lancées, elles ne suivent
+        // plus le jet. Grains du vide : rebond amorti. Gouttes d'eau : freinées par l'air, disparaissent dans l'eau.
+        // Rebond sur le vrai sol (carte des hauteurs) : les grains ricochent sur les rochers et les pentes.
+        float groundY = GEGroundHeight(slot, p.posLife.xz);
+        p.velSeed.y -= max(_GEDebrisGravity[slot].x, 0.0) * _GEDebrisDeltaTime;
+        if (water) p.velSeed.xyz *= exp(-_GEDebrisDeltaTime * 0.35);
+        if (gravel) p.velSeed.xyz *= exp(-_GEDebrisDeltaTime * 0.5);
+        p.posLife.xyz += p.velSeed.xyz * _GEDebrisDeltaTime;
+        p.posLife.w -= _GEDebrisDeltaTime;
+        if (p.posLife.y < groundY && p.velSeed.y < 0)
+        {
+            if (water) p.posLife.w = 0;
+            else
+            {
+                p.posLife.y = groundY;
+                // Gravillons : un ou deux rebonds visibles ; grains du vide : un rebond bref, pas de grains suspendus.
+                p.velSeed.y *= gravel ? -0.3 : -0.12;
+                p.velSeed.xz *= gravel ? 0.6 : 0.55;
+                p.posLife.w = min(p.posLife.w, gravel ? 0.35 : 0.10);
+            }
+        }
+    }
+    else if (p.posLife.w < 0)
+        p.posLife.w = min(0, p.posLife.w + _GEDebrisDeltaTime);
+    else if (mode > 0.5 && Hash1(id * 127u + frame * 7919u + 67u) < saturate(_GEDebrisGravity[slot].y) * _GEDebrisGravity[slot].z)
+    {
+        // Nouveau tirage à chaque relance (numéro d'image dans le hachage) : jamais le même motif.
+        uint seed = id * 2654435761u + frame * 97u;
+        float angle = Hash1(seed + 9u) * 6.2831853;
+        float hv = Hash1(seed + 17u);
+        float2 originDir = float2(cos(angle), sin(angle));
+        float2 radial = originDir;
+        // Gouttes : arrachées sur tout le disque d'impact (répartition surfacique), jamais sur un anneau net.
+        float u0 = Hash1(seed + 5u);
+        float origin = max(_GEDebrisData[slot].x, 0.2) * (water ? 1.6 * sqrt(u0) : 0.55 + 0.7 * u0);
+        float speed, elevation, life;
+        if (water)
+        {
+            // Départ irrégulier : l'embrun s'écarte de son rayon initial et dérive sous le vent.
+            // L'origine reste sur le disque d'impact : aucune goutte ne suit le moteur.
+            float2 tangent = float2(-originDir.y, originDir.x);
+            float scatter = (Hash1(seed + 73u) - 0.5) * 0.9;
+            float2 windBias = clamp(_GEFlowP[slot].xy * 0.04, -0.35, 0.35);
+            radial = normalize(originDir + tangent * scatter + windBias);
+            // Paquets de gouttes surtout rasants (6 à 40°), quelques-uns plus hauts.
+            speed = _GEDebrisData[slot].y * (0.3 + 0.7 * hv);
+            float e = Hash1(seed + 41u);
+            elevation = radians(6.0 + 34.0 * e * e);
+            life = 0.6 + 1.2 * Hash1(seed + 39u);
+        }
+        else if (gravel)
+        {
+            // Gravillons : gerbe basse et irrégulière, arrachée autour de la tache, qui retombe à quelques dizaines de mètres.
+            float2 tangent = float2(-originDir.y, originDir.x);
+            radial = normalize(originDir + tangent * ((Hash1(seed + 73u) - 0.5) * 0.7));
+            speed = _GEDebrisData[slot].y * (0.3 + 0.8 * hv);
+            float e = Hash1(seed + 41u);
+            elevation = radians(8.0 + 40.0 * e * e);
+            life = 0.5 + 0.9 * Hash1(seed + 39u);
+        }
+        else
+        {
+            // Le choc éjecte des grains à vitesses et directions légèrement différentes, puis ils
+            // suivent leur trajectoire balistique sans turbulence atmosphérique.
+            float2 tangent = float2(-originDir.y, originDir.x);
+            radial = normalize(originDir + tangent * ((Hash1(seed + 73u) - 0.5) * 0.18));
+            speed = _GEDebrisData[slot].y * (0.2 + 1.35 * hv * hv);
+            elevation = _GEDebrisData[slot].z * (0.55 + 1.15 * Hash1(seed + 41u));
+            // Les grains visibles près du sol quittent vite le champ ; aucun nuage rémanent en vide.
+            life = 0.20 + 0.52 * Hash1(seed + 39u);
+        }
+        float3 o = _GESrc[slot].xyz;
+        p.posLife = float4(o.x + originDir.x * origin, o.y + 0.05, o.z + originDir.y * origin, life);
+        p.velSeed = float4(radial.x * speed * cos(elevation), speed * sin(elevation),
+            radial.y * speed * cos(elevation), Hash1(seed + 3u));
+    }
+    _GEDebris[id] = p;
+}
+
+// Turbulence : rotationnel d'un potentiel vectoriel de bruit (champ sans divergence : tourbillons, pas de
+// « respiration »), qui dérive lentement dans le temps. Renvoie une vitesse sans dimension, ~1 en moyenne.
+float3 CurlNoise(float3 q)
+{
+    const float e = 1.0 / 128.0;
+    float4 px0 = _GENoise.SampleLevel(sampler_GENoise, q - float3(e, 0, 0), 0);
+    float4 px1 = _GENoise.SampleLevel(sampler_GENoise, q + float3(e, 0, 0), 0);
+    float4 py0 = _GENoise.SampleLevel(sampler_GENoise, q - float3(0, e, 0), 0);
+    float4 py1 = _GENoise.SampleLevel(sampler_GENoise, q + float3(0, e, 0), 0);
+    float4 pz0 = _GENoise.SampleLevel(sampler_GENoise, q - float3(0, 0, e), 0);
+    float4 pz1 = _GENoise.SampleLevel(sampler_GENoise, q + float3(0, 0, e), 0);
+    // Potentiel ψ = (a, r, g) : Perlin, Perlin-Worley, Worley basse fréquence.
+    float3 dx = (px1.arg - px0.arg), dy = (py1.arg - py0.arg), dz = (pz1.arg - pz0.arg);
+    float3 curl = float3(dy.z - dz.y, dz.x - dx.z, dx.y - dy.x) / (2.0 * e);
+    return curl * (1.0 / 6.0);
+}
+
+[numthreads(4,4,4)]
+void Simulate(uint3 id : SV_DispatchThreadID)
+{
+    uint X = (uint)_GEDims.x, Y = (uint)_GEDims.y, Z = (uint)_GEDims.z;
+    uint k = id.z / Z;
+    if (id.x >= X || id.y >= Y || k >= 4) return;
+    if (_GESimFlags[k].y < 0.5 && _GESimFlags[k].x < 0.5) return;
+    uint lz = id.z - k * Z;
+    float3 uvw = (float3(id.x, id.y, lz) + 0.5) / float3(X, Y, Z);
+    float E = max(_GEGridO[k].w, 1.0), Hg = max(_GEGridU[k].w, 1.0);
+    float3 p = float3((uvw.x - 0.5) * 2.0 * E, uvw.y * (Hg + 1.0) - 1.0, (uvw.z - 0.5) * 2.0 * E);
+    if (_GESimFlags[k].x > 0.5) { _OutDensity[id] = 0; return; }
+    // Sous le terrain (butte, bâtiment, flanc du pas) : pas de fumée, l'écoulement passe autour (1.7).
+    if (p.y < GEGroundHeight(k, p.xz) - 0.5) { _OutDensity[id] = 0; return; }
+
+    float dt = _DeltaTime;
+    float4 src = _GESrc[k], jet = _GEJet[k], fl = _GEFlowP[k], misc = _GEMisc[k];
+    float ri = max(src.w, 0.5);
+    float Rm = max(fl.z, 4.0 * ri);
+    float steam = jet.z;
+
+    // Vitesse : écoulement moyen + turbulence (deux échelles, proportionnelle à l'agitation locale).
+    float3 v = GEMeanVelocity(k, p);
+    float L = clamp(0.16 * Rm, 5.0, 90.0);
+    // Deux octaves qui dérivent dans des directions différentes dans l'espace du bruit : les tourbillons se
+    // déforment et se renouvellent (temps de retournement de quelques secondes, comme un vrai nuage de décollage)
+    // au lieu de glisser d'un bloc.
+    float3 q = p / (L * 6.0) + float3(misc.x * 0.37, _GETime * 0.024, misc.x * 0.11 + _GETime * 0.015);
+    float3 q2 = p / (L * 2.6) + float3(0.41 - _GETime * 0.037, misc.x * 0.23, 0.17 + _GETime * 0.029);
+    float3 turb = CurlNoise(q) + 0.55 * CurlNoise(q2);
+    float rs = length(p.xz - src.xz);
+    // Vapeur de pas de tir : brassage de fond plus calme (grosse masse lente) ; sinon elle s'étale et se dilue en 20 s.
+    bool padTurb = misc.y > 1.5 && misc.y < 2.5;
+    // Bout des jets du pas (1.8) : brassage vertical rétabli là où la vapeur monte en bourgeons.
+    float padTip = padTurb ? GEPadTip(k, p) : 0.0;
+    float agitation = 0.42 * length(v) + (padTurb ? 1.0 + 0.6 * steam + 1.2 * padTip : 1.4 + 1.8 * steam) + 2.0 * jet.w * saturate(1.0 - rs / (0.8 * Rm));
+    // Stratification : au ras du sol, la turbulence brasse surtout à l'horizontale (le souffle plaque la matière) ;
+    // le mélange vertical reprend au-dessus de la couche pariétale.
+    float layer = GEWallLayer(k, rs);
+    turb.y *= lerp(0.55, 1.0, smoothstep(0.5 * layer, 2.5 * layer, p.y - src.y)) * (padTurb ? lerp(0.35, 1.0, padTip) : 1.0);
+    v += turb * agitation;
+
+    // Transport semi-lagrangien : on remonte la trajectoire (deux demi-pas pour suivre les courbes du rouleau).
+    float3 mid = p - v * (0.5 * dt);
+    float3 vm = GEMeanVelocity(k, mid) + turb * agitation;
+    float3 back = p - vm * dt;
+    // Une remontée qui passe sous le sol relit juste au-dessus du sol (l'air arrive en rasant, pas de l'intérieur du relief).
+    back.y = max(back.y, GEGroundHeight(k, back.xz) + 0.3);
+    // Coordonnées dans la grille de la frame précédente (même ancrage ; son étendue a pu s'agrandir depuis).
+    float Ep = max(_GEPrevExt[k].x, 1.0), Hp = max(_GEPrevExt[k].y, 1.0);
+    float2 shift = _GEPrevExt[k].zw;   // la grille a dérivé au vent depuis le pas précédent (1.8)
+    float3 bu = float3((back.x + shift.x) / (2.0 * Ep) + 0.5, (back.y + 1.0) / (Hp + 1.0), (back.z + shift.y) / (2.0 * Ep) + 0.5);
+    float previous = 0;
+    // Sol (bas de la grille) : une remontée ne tire pas du vide par le dessous (le nuage se décollait du sol et
+    // flottait) ; on relit la couche du bas (1.6).
+    bu.y = max(bu.y, 0.5 / Y);
+    if (all(bu > 0.0) && all(bu < 1.0))
+        previous = _InDensity.SampleLevel(sampler_InDensity, float3(bu.x, bu.y, (k + clamp(bu.z, 0.5 / Z, 1.0 - 0.5 / Z)) / _GEDims.w), 0);
+
+    // Source : poussière / vapeur / embruns arrachés en anneau autour de la tache, au ras du sol.
+    float2 rel = p.xz - src.xz;
+    float r = length(rel);
+    float y = p.y - src.y;
+    // Anneau source : rayon, largeur et hauteur d'au moins une maille (sinon un petit moteur n'injecte presque rien),
+    // débit normalisé par le volume du nuage attendu (calculé côté C#, _GESrcP).
+    float4 sp = _GESrcP[k];
+    float ring = exp(-pow((r - sp.x) / sp.y, 2.0));
+    bool waterSurf = misc.y > 3.5 && misc.y < 4.5;
+    // Jet haut et étalé (tache large devant le nuage) : la matière est soulevée sur tout le disque, faiblement,
+    // pas dans un anneau géant (sinon un « donut » se forme quand la fusée s'élève).
+    float wide = smoothstep(0.08, 0.25, ri / Rm);
+    float disk = 1.0 - smoothstep(0.6 * sp.x, 1.2 * sp.x, r);
+    ring = ring * (1.0 - 0.5 * wide) + disk * 0.35 * wide;
+    // Eau : surtout à l'anneau où le souffle arrache la surface (rideau), un peu sur le disque.
+    if (waterSurf) ring = ring * 0.9 + disk * 0.2;
+    float srcShape = ring * exp(-max(y, 0.0) / sp.z) * (y > -0.5 ? 1.0 : 0.0);
+    // Pas de tir : l'eau du déluge vaporisée et les gaz sortent par les BOUCHES du déflecteur (nuage qui naît aux
+    // bouches et part à l'horizontale), il ne reste qu'un peu de vapeur au pied de la fusée. Quand la fusée est
+    // haute, la tache couvre tout le pas : retour progressif à l'anneau (canalisation calculée côté C#).
+    float4 fx = _GEFlowX[k];
+    if (fx.x > 0.001)
+    {
+        // Le jet visible (analytique, rendu) se dissout en nuage vers son bout : c'est là que la simulation reçoit la vapeur
+        // (même forme que GEJetShape, mêmes volumes côté C#).
+        float Lj = max(_GEJetX[k].x, 1.0);
+        float blobs = 0;
+        [unroll] for (int i = 0; i < 2; i++)
+        {
+            float js, jr, jl, jd;
+            float sh = GEJetShape(k, i, p, js, jr, jl, jd);
+            // Dépôt surtout vers le bout du jet, là où naissent les gros nuages (1.8.1, rétabli en 1.9.2) : un dépôt dès la
+            // lèvre laissait le long du couloir une traînée diluée qui restait en voile lisse après le départ. Le départ
+            // du jet reste visible à la bouche (jet dessiné par le rendu).
+            blobs += sh * smoothstep(0.15 * Lj, 0.45 * Lj, js);
+        }
+        srcShape = fx.x * blobs + (0.04 + 0.96 * (1.0 - fx.x)) * srcShape;
+    }
+    // Force réelle du souffle au sol : une fusée qui s'élève (jet pariétal lent) n'alimente presque plus le nuage.
+    // L'eau se pulvérise sous un souffle bien plus faible que celui qu'il faut pour arracher du sol.
+    float push = waterSurf ? pow(saturate((jet.x - 2.0) / 28.0), 1.05) : pow(saturate((jet.x - 8.0) / 72.0), 1.3);
+    // Bouffées irrégulières : l'apport varie dans l'espace et le temps (pas un anneau régulier), plus vite près
+    // des bouches (le déflecteur « crache » par à-coups).
+    float gust = 0.20 + 1.65 * _GENoise.SampleLevel(sampler_GENoise, float3(p.xz / max(ri * 4.0, 3.0 * sp.y), _GETime * lerp(0.18, 0.45, fx.x) + misc.x), 0).r;
+    float source = jet.y * push * gust * srcShape;
+
+    // Disparition : taux général + évaporation des parties minces (voiles, filaments) : le nuage reste une masse
+    // cohérente qui se dissout par ses bords, au lieu de s'étaler en une brume uniforme sur toute la grille.
+    float thin = 1.0 - smoothstep(0.05, 0.8, previous);
+    // Pas de tir : le nuage de vapeur du déluge persiste une à trois minutes (vidéos de décollages), il se dilue
+    // lentement ; la brume d'embruns et la poussière s'évaporent plus vite.
+    bool padSite = misc.y > 1.5 && misc.y < 2.5;
+    // 1.8.1 : sur le pas, seul le corps dense du nuage persiste ; les franges très diluées (traînée des jets) s'évaporent en
+    // quelques dizaines de secondes au lieu de rester des minutes en voile.
+    float evaporate = lerp(0.10, 0.22, steam) * thin * (1.0 - 0.7 * jet.w) * (padSite ? lerp(0.35, 0.1, smoothstep(0.03, 0.2, previous)) : 1.0);
+    float density = previous * exp(-(fl.w + evaporate) * dt) + source * sp.w * dt;
+    // Sous un jet puissant, la colonne est balayée : pas de nuage dans le dard. Un jet haut et lent ne creuse plus
+    // le nuage (le vieux nuage reste sur le pas de tir quand la fusée s'éloigne).
+    float rc = min(ri, 0.12 * Rm);
+    float column = jet.w * smoothstep(40.0, 120.0, jet.x) * (1.0 - smoothstep(0.6 * rc, 1.1 * rc, r)) * step(y, misc.w);
+    density *= exp(-dt * 6.0 * column);
+    // Bords de grille : zone d'amortissement progressive (≈ 10 % sur les côtés, 8 % en haut) : le nuage qui dérive
+    // vers une paroi s'y dilue en quelques secondes au lieu d'être coupé net (plus de « murs » ni de dessus plat).
+    float3 edge = min(uvw, 1.0 - uvw);
+    float edgeW = smoothstep(0.0, 0.10, min(edge.x, edge.z)) * smoothstep(0.0, 0.08, 1.0 - uvw.y);
+    density *= exp(-dt * 1.2 * (1.0 - edgeW)) * smoothstep(0.0, 0.015, min(edge.x, edge.z));
+    if (p.y < -0.5) density = 0;
+    _OutDensity[id] = clamp(density, 0.0, 4.0);
+}
