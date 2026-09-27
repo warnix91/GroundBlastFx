@@ -10,6 +10,41 @@ engine.
 
 The player documentation is in [`GameData/GroundBlastFx/README.md`](GameData/GroundBlastFx/README.md).
 
+## Screenshots
+
+![Launch pad steam](docs/images/01_pad_steam_day.webp)
+*Launch pad steam: two dense jets burst out of the real flame-trench outlets of the KSC pad and billow into long clouds lying on the ground.*
+
+![Night launch](docs/images/02_pad_steam_night.webp)
+*Night launch: the engine flame lights the steam clouds from inside, orange at the core and fading into the dark.*
+
+![Flame light](docs/images/03_pad_flame_light.webp)
+*Flame light: the engines light up the pad deck and the launch clamps around them.*
+
+![Hovering over grass](docs/images/04_dust_hover_side.webp)
+*Hovering over grass: the plume digs a clear spot under the nozzle and rolls a ring of dust outward, colored like the ground.*
+
+![Seen from above](docs/images/05_dust_hover_top.webp)
+*Seen from above: a thick, billowing dust cloud built up by a hovering booster, lit by its own flame.*
+
+![Wind](docs/images/06_dust_wind_drift.webp)
+*Wind: after touchdown the dust cloud stays where it was made and slowly drifts away with the wind.*
+
+![Lift-off from the grass next to the pad](docs/images/07_dust_liftoff_near_pad.webp)
+*Lift-off from the grass next to the pad: the cloud follows the real impact point of the plume.*
+
+![Over water](docs/images/08_water_spray_top.webp)
+*Over water: the jet opens a crater in the surface and throws up a white ring of spray.*
+
+![Spray cloud over the sea](docs/images/09_water_spray_side.webp)
+*Spray cloud over the sea, drifting with the wind near the KSC shore.*
+
+![On the Mun (no air)](docs/images/10_mun_ejecta_sheet.webp)
+*On the Mun (no air): a thin streaked ejecta sheet races outward, no billowing cloud.*
+
+![The blast mark left on the Mun after landing](docs/images/11_mun_blast_mark.webp)
+*The blast mark left on the Mun after landing, saved with your game.*
+
 ## How it works (short)
 
 - The plugin samples every running engine (thrust, propellant, nozzle position), casts rays to find where the plume hits
