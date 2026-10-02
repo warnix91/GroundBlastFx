@@ -17,6 +17,9 @@ namespace GroundBlastFx.Core
     /// </summary>
     public sealed class ClusterTracker
     {
+        /// <summary>Marge (m) au-delà du rayon d'un pas de tir pour garder ses vraies bouches de déflecteur.</summary>
+        private const float PadOutletMarginM = 40f;
+
         public const int MaxClusters = 32;
 
         private readonly ClusterState[] _states = new ClusterState[MaxClusters];
@@ -569,8 +572,17 @@ namespace GroundBlastFx.Core
             c.DeflectorDir0World = c.DeflectorDir1World = Vector3.zero;
             if (s.Surface == SurfaceKind.LaunchPad && Pads != null && Pads.Count > 0)
             {
-                var pad = Pads.Nearest(c.CloudAnchorWorld, 200f, out float d);
-                if (pad != null && d <= pad.RadiusM)
+                // 1.0.1 : le pas trouvé est gardé pour tout le foyer, et le centre du nuage peut être un peu hors du rayon
+                // du pas (plusieurs moteurs, fusée qui dérive au décollage). Sinon le nuage perdait les vraies bouches et
+                // repassait sur le cap de secours : deux paires de jets dans deux directions.
+                var pad = s.PadRef;
+                if (pad == null || pad.Fx == null || pad.Deck == null)
+                {
+                    pad = Pads.Nearest(c.CloudAnchorWorld, 200f, out float d);
+                    if (pad != null && d > pad.RadiusM + PadOutletMarginM) pad = null;
+                    s.PadRef = pad;
+                }
+                if (pad != null)
                 {
                     for (int i = 0; i < pad.OutletCount; i++)
                     {

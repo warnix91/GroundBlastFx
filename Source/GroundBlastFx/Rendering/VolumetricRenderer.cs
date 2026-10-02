@@ -12,8 +12,8 @@ namespace GroundBlastFx.Rendering
 {
     /// <summary>
     /// Implémentation en jeu d'IGroundBlastFxRenderer : couche KSP autour de RenderCore (commun avec le harnais Unity).
-    /// - Deux CommandBuffers sur FlightCamera.fetch.mainCamera : après les opaques pour la poussière,
-    ///   après les transparents pour les embruns, y compris quand plusieurs surfaces coexistent.
+    /// - Deux CommandBuffers sur FlightCamera.fetch.mainCamera : après les opaques pour la poussière (remis en dernier à
+    ///   chaque frame, après la diffusion de Scatterer), après les transparents pour les embruns.
     /// - Soleil : Sun.Instance.sunLight (la vraie lumière solaire de KSP), nuit et rougissement calculés au foyer.
     /// - Lumières de flamme : une Light ponctuelle par foyer, sans ombres.
     /// </summary>
@@ -63,6 +63,8 @@ namespace GroundBlastFx.Rendering
         private CommandBuffer _waterCommands;
         private int _width, _height, _divisor = 2;
         private string _status = "non initialisé";
+        private bool _loggedOtherBuffers;
+        private int _bufferChecks;   // relevé des autres CommandBuffers limité aux premières secondes (allocation)
 
         public bool IsAvailable => _core != null && _core.IsAvailable;
         public string BackendName => _core != null ? _core.BackendName : "Null";
@@ -91,6 +93,35 @@ namespace GroundBlastFx.Rendering
             }
             _status = _core.Status;
             GeLog.Info("Renderer volumétrique : " + _status);
+            Camera.onPreRender += OnCameraPreRender;
+        }
+
+        /// <summary>
+        /// 1.0.1 : la composition passe en dernier parmi les CommandBuffers « avant les transparents ». Scatterer (versions
+        /// publiques) ajoute à chaque frame, au même moment, sa diffusion atmosphérique : elle réécrit le décor à partir
+        /// d'une copie de l'écran prise avant nos nuages, qui disparaissaient alors partout sauf sur l'eau (passe placée
+        /// après les transparents) et sur les corps sans atmosphère. Scatterer ajoute son buffer pendant le tri des objets
+        /// (OnWillRenderObject) ; onPreRender vient ensuite, on remet donc le nôtre en fin de liste à chaque frame.
+        /// </summary>
+        private void OnCameraPreRender(Camera cam)
+        {
+            if (cam == null || cam != _camera || _commands == null) return;
+            if (!_loggedOtherBuffers && _bufferChecks++ < 600)
+            {
+                CommandBuffer[] list = cam.GetCommandBuffers(RenderCore.Event);
+                if (list.Length > 1)
+                {
+                    _loggedOtherBuffers = true;
+                    var names = new System.Text.StringBuilder();
+                    foreach (CommandBuffer b in list)
+                        if (b.name != _commands.name) names.Append(names.Length > 0 ? ", " : "").Append(b.name);
+                    GeLog.Info("Autres CommandBuffers avant les transparents : " + names + " → composition GroundBlastFx placée après eux.");
+                }
+            }
+            cam.RemoveCommandBuffer(RenderCore.Event, _commands);
+            cam.AddCommandBuffer(RenderCore.Event, _commands);
+            // Orientation réelle de la caméra au moment du rendu (elle peut encore bouger après notre LateUpdate).
+            _core?.UpdateCamera(cam);
         }
 
         public void ApplySettings(RendererSettings settings)
@@ -180,6 +211,8 @@ namespace GroundBlastFx.Rendering
             _waterCommands = new CommandBuffer { name = "GroundBlastFx eau + composition" };
             _camera.AddCommandBuffer(RenderCore.Event, _commands);
             _camera.AddCommandBuffer(CameraEvent.AfterForwardAlpha, _waterCommands);
+            _loggedOtherBuffers = false;
+            _bufferChecks = 0;
         }
 
         private void Detach()
@@ -203,6 +236,7 @@ namespace GroundBlastFx.Rendering
 
         public void Shutdown()
         {
+            Camera.onPreRender -= OnCameraPreRender;
             Detach();
             DisableLights();
             for (int i = 0; i < _lights.Length; i++)

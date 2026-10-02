@@ -1,4 +1,4 @@
-# GroundBlastFx 1.0.0
+# GroundBlastFx 1.0.1
 
 Volumetric ground effects for rocket engines in Kerbal Space Program 1.12: dust, launch pad steam, water spray, vacuum
 ejecta, scorch marks and flame light, all driven by the real thrust, height, surface, atmosphere and propellant of each

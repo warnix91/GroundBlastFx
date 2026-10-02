@@ -1,5 +1,11 @@
 # Changelog — GroundBlastFx
 
+## 1.0.1
+
+- Fix: dust and launch pad steam did not show up with Scatterer (with EVE integration on). Scatterer was drawing over them. Water spray and the Mun effects were fine.
+- Fix: at liftoff, a second pair of pad jets could show up going the wrong way (along the crawlerway).
+- Fix: the smoke could turn with the camera (camera locked on a rolling rocket, camera shake at launch). The clouds now use the camera position at the exact moment the frame is drawn.
+
 ## 1.0.0 — first public release
 
 - Volumetric dust, launch pad steam, water spray and snow clouds simulated on the GPU and anchored to the ground; they

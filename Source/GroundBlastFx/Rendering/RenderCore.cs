@@ -847,11 +847,7 @@ namespace GroundBlastFx.Rendering
                 volFar = Mathf.Max(volFar, Vector3.Distance(origin, center) + radius);
             }
             m.SetFloat("_GEVolFar", volFar);
-            m.SetVector("_GECamForward", fwd);
-            m.SetVector("_GERay00", cam.ViewportPointToRay(new Vector3(0f, 0f, 0f)).direction);
-            m.SetVector("_GERay10", cam.ViewportPointToRay(new Vector3(1f, 0f, 0f)).direction);
-            m.SetVector("_GERay01", cam.ViewportPointToRay(new Vector3(0f, 1f, 0f)).direction);
-            m.SetVector("_GERay11", cam.ViewportPointToRay(new Vector3(1f, 1f, 0f)).direction);
+            UpdateCamera(cam);
             m.SetVector("_GESunDir", sun);
             m.SetColor("_GESunColor", env.SunColor);
             m.SetColor("_GEAmbientSky", env.AmbientSky);
@@ -878,11 +874,27 @@ namespace GroundBlastFx.Rendering
                 _debris.SetVectorArray("_GEParams", _params);
                 _debris.SetVectorArray("_GEExtra", _extra);
                 _debris.SetVectorArray("_GEColorB", _colorB);
-                _debris.SetVector("_GECameraRight", cam.transform.right);
                 _debris.SetColor("_GESunColor", env.SunColor);
                 _debris.SetColor("_GEAmbientSky", env.AmbientSky);
                 _debris.SetVector("_GESunDir", sun);
             }
+        }
+
+        /// <summary>
+        /// Position et rayons de la caméra (1.0.1). Appelé aussi juste avant le rendu (Camera.onPreRender en jeu) : la
+        /// caméra de KSP peut encore bouger après notre LateUpdate (suivi d'une fusée qui roule, tremblement au décollage,
+        /// mods de caméra). Avec des rayons d'une orientation déjà dépassée, les nuages semblaient tourner avec la caméra.
+        /// </summary>
+        public void UpdateCamera(Camera cam)
+        {
+            if (cam == null || _volume == null) return;
+            _volume.SetVector("_GECamera", cam.transform.position);
+            _volume.SetVector("_GECamForward", cam.transform.forward);
+            _volume.SetVector("_GERay00", cam.ViewportPointToRay(new Vector3(0f, 0f, 0f)).direction);
+            _volume.SetVector("_GERay10", cam.ViewportPointToRay(new Vector3(1f, 0f, 0f)).direction);
+            _volume.SetVector("_GERay01", cam.ViewportPointToRay(new Vector3(0f, 1f, 0f)).direction);
+            _volume.SetVector("_GERay11", cam.ViewportPointToRay(new Vector3(1f, 1f, 0f)).direction);
+            if (_debris != null) _debris.SetVector("_GECameraRight", cam.transform.right);
         }
 
         /// <summary>Enregistre les commandes de la frame (volume réduit → composition → particules).</summary>

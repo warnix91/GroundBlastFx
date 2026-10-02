@@ -102,6 +102,9 @@ namespace GroundBlastFx.Core
         // --- Traces ---
         public int ScorchSlot = -1;
 
+        // --- Pas de tir dont le nuage utilise les vraies bouches (1.0.1 : gardé toute la vie du foyer) ---
+        public GroundBlastFx.Surface.LaunchPadRegistry.Pad PadRef;
+
         public void Reset()
         {
             InUse = false;
@@ -121,6 +124,7 @@ namespace GroundBlastFx.Core
             BiomeName = null;
             BiomeAgeS = 999f;
             ScorchSlot = -1;
+            PadRef = null;
             IsDemo = false;
             CloudAnchorSet = false;
             Source = 0f;
