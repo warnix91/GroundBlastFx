@@ -8,7 +8,7 @@ namespace GroundBlastFx.UI
     /// <summary>
     /// Overlay de debug indépendant du renderer (tâche CL-1.7) : rayons de sondage, taches r_i, fronts R_front,
     /// étiquettes des foyers, flèche de tranchée. Dessiné en espace écran dans OnGUI (GL + IMGUI), sans toucher
-    /// à la caméra de vol ni au pipeline de rendu (décision D-CL-008).
+    /// à la caméra de vol ni au pipeline de rendu.
     /// Les chaînes des étiquettes sont reconstruites 4 fois par seconde seulement.
     /// </summary>
     public sealed class DebugOverlay

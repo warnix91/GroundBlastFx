@@ -1,4 +1,4 @@
-﻿Shader "GroundBlastFx/GroundVolume"
+Shader "GroundBlastFx/GroundVolume"
 {
     // Volume de poussière / vapeur / embruns par foyer.
     // Passe 0 : raymarching à résolution réduite dans la GRILLE SIMULÉE ANCRÉE AU SOL (VolumeField.compute) :

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using GroundBlastFx.Config;
 using GroundBlastFx.Contracts;
@@ -10,7 +10,7 @@ namespace GroundBlastFx.Core
     /// <summary>
     /// Mode Démo : foyers virtuels (IsDemo = true) sous ou à côté du vaisseau actif, pendant 30 s,
     /// sans moteur réel. Les tuyères virtuelles passent par le même pipeline que les vrais moteurs (sondage, modèle,
-    /// fusion, suivi), avec les profils des scénarios S1, S2, S3, S4, S5 et S7 (§4.4).
+    /// fusion, suivi), avec les profils des scénarios S1, S2, S3, S4, S5 et S7.
     /// </summary>
     public sealed class DemoDirector
     {

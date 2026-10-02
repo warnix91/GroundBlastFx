@@ -1,5 +1,5 @@
 <!--
-  Tests unitaires du modèle physique (écrivain : CLAUDE).
+  Tests unitaires du modèle physique.
   Compile directement les sources de Source/GroundBlastFx/Physics (C# pur, sans UnityEngine) avec .NET 10.
   Aucun paquet NuGet : petit exécuteur maison (Program.cs). Lancer : dotnet run -c Release
 -->

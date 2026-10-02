@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GroundBlastFx.Config;
 using GroundBlastFx.Contracts;
 using GroundBlastFx.Model;
@@ -12,7 +12,7 @@ namespace GroundBlastFx.Core
     /// - accumulation (dose) tant que le jet reste au même endroit ; nouvelle trace si le foyer se déplace ;
     /// - ancrage lat/lon/alt, ou Transform de pièce sur un pont de barge ;
     /// - nombre limité (ScorchMaxMarks), la plus faible est recyclée ;
-    /// - durée de vie : la session de jeu (D-CL-007). Stockage statique : les traces survivent aux changements de scène,
+    /// - durée de vie : la session de jeu. Stockage statique : les traces survivent aux changements de scène,
     ///   mais celles créées « dans le futur » sont effacées après un revert ou un quickload (temps universel qui recule).
     ///   1.7 : si « persistentMarks » est actif, elles sont aussi gardées dans la sauvegarde (GroundBlastFxScenario).
     /// </summary>

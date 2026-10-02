@@ -8,7 +8,7 @@ namespace GroundBlastFx.Core
 {
     /// <summary>
     /// Masque la poussière stock de KSP (ModuleSurfaceFX : sprites de particules) quand le réglage « masquer la poussière
-    /// stock » est actif, pour qu'elle ne se superpose pas au rendu volumétrique (décision D-CL-006).
+    /// stock » est actif, pour qu'elle ne se superpose pas au rendu volumétrique.
     /// Méthode : fxMax = 0 sur chaque module. Le module stock continue de tourner, voit une échelle nulle et retire
     /// proprement son effet (même chemin que moteur coupé). Valeurs d'origine restaurées si le réglage est désactivé
     /// et à la sortie de la scène de vol. Aucun fichier d'un autre mod n'est modifié.

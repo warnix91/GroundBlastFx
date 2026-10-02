@@ -2,7 +2,7 @@
 .SYNOPSIS
     Copie GameData/GroundBlastFx du dépôt dans l'installation KSP, sans rien toucher d'autre.
 .DESCRIPTION
-    Écrivain : CLAUDE.
+    
     - Refuse de tourner si KSP (cette installation) est ouvert.
     - Ne touche qu'à <KSP>/GameData/GroundBlastFx. Les réglages du joueur (PluginData/Settings.cfg,
       PluginData/LaunchSites_user.cfg) et le log ne sont jamais écrasés.

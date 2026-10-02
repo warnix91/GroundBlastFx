@@ -2,7 +2,7 @@
 .SYNOPSIS
     Construit la livraison : build Release + tests, puis Release/GroundBlastFx-v<version>.zip (contient uniquement GameData/GroundBlastFx).
 .DESCRIPTION
-    Écrivain : CLAUDE. Depuis un clone propre : aucune autre étape nécessaire (les bundles de shaders sont versionnés).
+    Depuis un clone propre : aucune autre étape nécessaire (les bundles de shaders sont versionnés).
     Exclus du zip : réglages et fichiers du joueur (Settings.cfg, LaunchSites_user.cfg, GroundBlastFx.log),
     fichiers de développement (DevAutomation.cfg, Captures/), .gitkeep, .pdb.
     Exemple : powershell -ExecutionPolicy Bypass -File Tools/package.ps1

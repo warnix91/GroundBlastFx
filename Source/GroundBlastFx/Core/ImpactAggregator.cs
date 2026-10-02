@@ -7,7 +7,7 @@ using UnityEngine;
 namespace GroundBlastFx.Core
 {
     /// <summary>
-    /// Évalue chaque jet qui touche une surface (modèle §3.2) puis fusionne les taches proches en foyers (§3.3) :
+    /// Évalue chaque jet qui touche une surface puis fusionne les taches proches en foyers :
     /// position = moyenne pondérée par la poussée ; rayon = enveloppe des taches ; poussée et débit = sommes.
     /// Les foyers sous le seuil d'activation (au-dessus de H_act) sont écartés.
     /// Tableaux réutilisés : aucune allocation en régime établi.

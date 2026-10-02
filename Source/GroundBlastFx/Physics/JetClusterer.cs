@@ -1,4 +1,4 @@
-﻿namespace GroundBlastFx.Model
+namespace GroundBlastFx.Model
 {
     /// <summary>
     /// Fusion des taches d'impact proches en foyers par union-find.

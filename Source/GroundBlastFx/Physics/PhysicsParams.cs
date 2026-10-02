@@ -1,4 +1,4 @@
-﻿namespace GroundBlastFx.Model
+namespace GroundBlastFx.Model
 {
     /// <summary>
     /// Constantes calibrables du modèle. Valeurs par défaut = Configs/Physics.cfg livré.

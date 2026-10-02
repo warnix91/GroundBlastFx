@@ -216,7 +216,7 @@ namespace GroundBlastFx.Tests
 
     public static class AllocationTests
     {
-        /// <summary>Exigence §5 : zéro allocation par frame dans les chemins chauds du modèle.</summary>
+        /// <summary>Exigence : zéro allocation par frame dans les chemins chauds du modèle.</summary>
         [Test]
         public static void HotPathsDoNotAllocate()
         {

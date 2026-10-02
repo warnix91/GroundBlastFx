@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace GroundBlastFx.Model
 {
@@ -128,7 +128,7 @@ namespace GroundBlastFx.Model
             }
         }
 
-        /// <summary>Profil temporel du scénario (§4.4). t en secondes depuis le lancement de la démo.</summary>
+        /// <summary>Profil temporel du scénario. t en secondes depuis le lancement de la démo.</summary>
         public static void Evaluate(DemoScenario s, float t, out DemoState state)
         {
             state.EnginesOn = t >= 0f && t < s.DurationS;

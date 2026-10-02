@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -9,7 +9,7 @@ namespace GroundBlastFx.Core
     /// <summary>
     /// Journalisation.
     /// - Tout message passe par Debug.Log avec le préfixe « [GroundBlastFx] » (donc dans KSP.log).
-    /// - Tous les messages portant ce préfixe, y compris ceux du Rendering (CODEX), sont recopiés dans
+    /// - Tous les messages portant ce préfixe, y compris ceux du Rendering, sont recopiés dans
     ///   PluginData/GroundBlastFx.log, écrasé à chaque lancement du jeu.
     /// - Zéro spam : une exception identique n'est loguée qu'une fois, ensuite on ne tient qu'un compteur.
     /// </summary>

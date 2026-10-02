@@ -65,7 +65,7 @@ namespace GroundBlastFx.Rendering
     /// <summary>
     /// Cœur du rendu, sans aucune dépendance à KSP : utilisé par VolumetricRenderer en jeu ET par le harnais Unity
     /// hors jeu (mêmes shaders, mêmes paramètres, même empaquetage des foyers). Aucune allocation par frame.
-    /// Principe (D-CL-014) : RIEN n'est attaché au jet. Chaque foyer a une grille de densité ANCRÉE AU SOL (slot stable
+    /// Principe : RIEN n'est attaché au jet. Chaque foyer a une grille de densité ANCRÉE AU SOL (slot stable
     /// tant que le foyer vit) ; le jet n'est qu'une source qui l'alimente et la pousse. Les gouttes et les grains sont
     /// des particules GPU lancées depuis l'impact puis laissées dans le repère du sol.
     /// </summary>
@@ -85,7 +85,7 @@ namespace GroundBlastFx.Rendering
         public static IGroundSampler Ground;
         /// <summary>
         /// Moment du rendu : après les opaques, AVANT les transparents. Les flammes (Waterfall, transparentes et
-        /// additives) sont donc dessinées par-dessus la poussière et restent visibles (D-CL-015).
+        /// additives) sont donc dessinées par-dessus la poussière et restent visibles.
         /// </summary>
         public const CameraEvent Event = CameraEvent.BeforeForwardAlpha;
         public static Action<string> Log = s => Debug.Log("[GroundBlastFx] " + s);
@@ -404,7 +404,7 @@ namespace GroundBlastFx.Rendering
 
         private static Vector3 NormalOf(ref ImpingementCluster c)
         {
-            // Verticale fixe du nuage (1.7, D-CL-021) ; anciens contrats : normale du sol.
+            // Verticale fixe du nuage ; anciens contrats : normale du sol.
             if (c.CloudUpWorld.sqrMagnitude > 1e-4f) return c.CloudUpWorld.normalized;
             return c.SurfaceNormalWorld.sqrMagnitude > 1e-4f ? c.SurfaceNormalWorld.normalized : Vector3.up;
         }
@@ -444,7 +444,7 @@ namespace GroundBlastFx.Rendering
 
         /// <summary>
         /// Bouches du déflecteur de flammes dans le repère local de la grille (x est, z nord, y hauteur) : bouches réelles
-        /// du pas (émetteurs de fumée stock, D-CL-018) ou, à défaut, deux bouches sur l'axe de tranchée configuré
+        /// du pas ou, à défaut, deux bouches sur l'axe de tranchée configuré
         /// (LaunchSites.cfg). Renvoie la distance horizontale moyenne des bouches à l'ancrage (0 = pas de déflecteur).
         /// </summary>
         private float PackOutlets(int s, ref ImpingementCluster c, Vector3 gridOrigin, Vector3 n, Vector3 east, Vector3 north)
@@ -635,7 +635,7 @@ namespace GroundBlastFx.Rendering
             bool feeding = jetTarget > 0.05f;
             // Disparition : lente pendant l'activité (le nuage est entretenu), puis sur la durée de dissipation prévue.
             float diss = c.DissipationTimeS > 1f ? c.DissipationTimeS : 20f + 70f * Mathf.Clamp01(rmax / 400f);
-            // La vapeur de pas de tir persiste longtemps (§4.3-12) ; la brume d'embruns s'évapore en quelques secondes.
+            // La vapeur de pas de tir persiste longtemps ; la brume d'embruns s'évapore en quelques secondes.
             float offDecay = (2.2f - 1.3f * steam) / diss;
             float decay = c.EnginesActive ? (c.Surface == SurfaceKind.LaunchPad ? 0.004f : 0.01f) : offDecay;
             // 1.0.1 : moteurs encore allumés mais le jet n'alimente presque plus ce foyer (fusée qui monte au-dessus du pas) :
