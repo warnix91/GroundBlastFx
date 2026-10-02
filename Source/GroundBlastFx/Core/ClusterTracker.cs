@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using GroundBlastFx.Config;
 using GroundBlastFx.Contracts;
@@ -77,7 +77,7 @@ namespace GroundBlastFx.Core
                 // le nuage existant garde sa nature et se dissipe ; un nouveau foyer naît sur la nouvelle surface (1.7).
                 if (s.SurfaceSet && s.Surface != g.Surface && s.SurfaceMismatchTicks >= SurfaceMismatchLimit) continue;
                 // Le nuage déposé est ancré au sol : si le point d'impact s'éloigne trop de son origine (fusée qui part
-                // en biais), un nouveau foyer naît et l'ancien se dissipe sur place (D-CL-014). Zone portée à 0,65 R_max
+                // en biais), un nouveau foyer naît et l'ancien se dissipe sur place. Zone portée à 0,65 R_max
                 // en 1.6 (la grille couvre 1,45 R_max) : moins de foyers, donc moins de nuages qui repartent de zéro.
                 float anchorD = s.CloudAnchorSet ? Vector3.Distance(s.WorldCloudAnchor, g.ImpactWorld) : 0f;
                 float domain = Mathf.Max(p.ClusterMatchMinM, 0.65f * Mathf.Max(s.MaxCloudRadiusM, 1.5f * g.EnvelopeRadiusM));

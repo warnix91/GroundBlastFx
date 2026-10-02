@@ -1,7 +1,7 @@
-﻿<!--
+<!--
   Format SDK : tous les .cs sous Source/GroundBlastFx/ sont inclus automatiquement.
   Cible : les assemblies de KSP 1.12 lui-même (mscorlib du Mono de Unity 2019.4),
-  compilées avec /nostdlib contre KSP_x64_Data/Managed. Voir décision D-CL-003.
+  compilées avec /nostdlib contre KSP_x64_Data/Managed.
   Chemin de KSP : propriété KSPRoot, ou variable d'environnement KSP_ROOT, (obligatoire).
 -->
 <Project Sdk="Microsoft.NET.Sdk">

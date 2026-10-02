@@ -2,7 +2,7 @@
 .SYNOPSIS
     Compile GroundBlastFx.dll et la copie dans GameData/GroundBlastFx/Plugins/.
 .DESCRIPTION
-    Écrivain : CLAUDE. Utilisé par les deux agents : le build doit rester vert.
+    Le build doit rester vert.
     Exemples :
         powershell -ExecutionPolicy Bypass -File Tools/build_dll.ps1
         powershell -ExecutionPolicy Bypass -File Tools/build_dll.ps1 -Configuration Release -RunTests

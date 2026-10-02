@@ -85,7 +85,7 @@ namespace GroundBlastFx.Core
         public Vector3 WorldAxis;
         public Vector3 WorldNozzle;
 
-        // --- Repère fixe du nuage déposé (D-CL-014) : ne suit pas le jet ---
+        // --- Repère fixe du nuage déposé : ne suit pas le jet ---
         public bool CloudAnchorSet;
         public double CALat, CALon, CAAlt;       // sol
         public Vector3 CloudAnchorLocal;         // pont de barge (repère du Transform)

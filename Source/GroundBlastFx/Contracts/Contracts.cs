@@ -1,4 +1,3 @@
-// PARTAGÉ — toute modification suit §8.3 (verrou) et §8.5 (décision si ce n'est pas purement additif).
 using System;
 using UnityEngine;
 
@@ -10,7 +9,7 @@ namespace GroundBlastFx.Contracts
 
     /// <summary>
     /// Foyer d'impact : un ou plusieurs jets fusionnés qui touchent la même zone.
-    /// Produit par le Core (CLAUDE) à chaque frame, consommé par le Rendering (CODEX).
+    /// Produit par le Core à chaque frame, consommé par le Rendering.
     /// Toutes les positions sont en espace monde Unity de la frame courante (origine flottante déjà gérée par le Core).
     /// </summary>
     public struct ImpingementCluster
@@ -63,29 +62,29 @@ namespace GroundBlastFx.Contracts
         public float CameraDistanceM;
         public int LodLevel;                  // 0 = détail max ; proposé par le Core, affinable par le Rendering
 
-        // Ajouts v1.1 (additifs, D-CL-014) : le nuage déposé ne suit pas le jet.
+        // Ajouts v1.1 : le nuage déposé ne suit pas le jet.
         public Vector3 CloudAnchorWorld;      // point du sol, fixe pendant toute la vie du foyer (repère de la grille simulée)
         public Vector3 CloudNorthWorld;       // direction horizontale fixe au sol (nord local) : orientation de la grille
         public float Visibility01;            // présence du nuage déjà formé (priorité, distance, fin de dissipation) ; ≠ Intensity01 (= apport du jet)
         public float DissipationTimeS;        // durée de dissipation prévue après coupure
         public float Source01;                // apport instantané du jet au nuage (0 après coupure ou quand le jet ne touche plus)
 
-        // Ajout v1.3 (additif, D-CL-018) : sorties réelles du déflecteur de flammes (pas de tir stock), 0 = inconnues.
+        // Ajout v1.3 : sorties réelles du déflecteur de flammes (pas de tir stock), 0 = inconnues.
         public int DeflectorOutletCount;
         public Vector3 DeflectorOutlet0World;
         public Vector3 DeflectorOutlet1World;
 
-        // Ajout v1.4 (additif, D-CL-019) : profil du sol devant chaque bouche (pas surélevé au-dessus du terrain) :
+        // Ajout v1.4 : profil du sol devant chaque bouche (pas surélevé au-dessus du terrain) :
         // x = dénivelé (m, ≥ 0) de la bouche 0 jusqu'au terrain environnant, y = distance (m) depuis la bouche où le sol
         // est descendu de moitié ; z, w = idem pour la bouche 1.
         public Vector4 DeflectorGround;
 
-        // Ajout v1.6 (additif, D-CL-020) : direction horizontale de sortie de chaque bouche (sens d'émission de la fumée
+        // Ajout v1.6 : direction horizontale de sortie de chaque bouche (sens d'émission de la fumée
         // stock) ; Vector3.zero = inconnue (le rendu prend alors la direction depuis l'ancrage du nuage).
         public Vector3 DeflectorDir0World;
         public Vector3 DeflectorDir1World;
 
-        // Ajout v1.7 (additif, D-CL-021) : verticale FIXE du nuage (verticale du lieu, ou du pont de barge). La normale du
+        // Ajout v1.7 : verticale FIXE du nuage (verticale du lieu, ou du pont de barge). La normale du
         // sol mesurée à chaque sondage bascule sur les pentes et les structures : le nuage ne doit pas basculer avec.
         public Vector3 CloudUpWorld;
         // Air raréfié 0..1 (Duna ≈ 0,85 ; Kerbin 0 ; vide 1) : nappe d'éjectas en plus du nuage.
@@ -104,7 +103,7 @@ namespace GroundBlastFx.Contracts
         public float AgeS;
         public Transform AnchorTransform;     // non null sur un pont de barge
 
-        // Ajout v1.2 (additif, D-CL-017)
+        // Ajout v1.2
         public float Soot01;                  // noircissement selon les ergols : kérolox ≈ 1 (suie), méthalox ≈ 0,2, hydrolox ≈ 0
     }
 
@@ -149,7 +148,7 @@ namespace GroundBlastFx.Contracts
 
     public static class RendererLocator
     {
-        /// Renseigné par le module Rendering (CODEX) au démarrage, via un KSPAddon(Startup.Instantly, true).
+        /// Renseigné par le module Rendering au démarrage, via un KSPAddon(Startup.Instantly, true).
         public static Func<IGroundBlastFxRenderer> Factory;
 
         public static IGroundBlastFxRenderer Create()

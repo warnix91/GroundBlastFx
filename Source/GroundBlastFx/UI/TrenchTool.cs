@@ -1,4 +1,4 @@
-﻿using GroundBlastFx.Config;
+using GroundBlastFx.Config;
 using GroundBlastFx.Contracts;
 using GroundBlastFx.Core;
 using UnityEngine;

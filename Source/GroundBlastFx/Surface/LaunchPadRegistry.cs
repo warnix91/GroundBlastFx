@@ -8,7 +8,7 @@ namespace GroundBlastFx.Surface
 {
     /// <summary>
     /// Pas de tir réels de la scène (composant stock <c>LaunchPadFX</c>, posé sur le collider « PadFXReceiver »).
-    /// Deux usages (D-CL-018) :
+    /// Deux usages :
     /// - distinguer le pas lui-même du grand collider de terrain qui l'entoure au KSC
     ///   (« model_launchpad_ground_collider ») : hors du rayon du pas, c'est du terrain, donc de la poussière ;
     /// - donner les sorties RÉELLES du déflecteur de flammes : KSP y place ses propres émetteurs de fumée

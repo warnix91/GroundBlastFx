@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using GroundBlastFx.Config;
 using KSP.UI.Screens;
 using UnityEngine;
